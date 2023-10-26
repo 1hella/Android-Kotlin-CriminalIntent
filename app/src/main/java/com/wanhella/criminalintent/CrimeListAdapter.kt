@@ -1,5 +1,6 @@
 package com.wanhella.criminalintent
 
+import android.icu.text.DateFormat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -12,7 +13,7 @@ class CrimeHolder(
 ) : RecyclerView.ViewHolder(binding.root) {
     fun bind(crime: Crime) {
         binding.crimeTitle.text = crime.title
-        binding.crimeDate.text = crime.date.toString()
+        binding.crimeDate.text = DateFormat.getDateInstance(DateFormat.FULL).format(crime.date)
 
         binding.root.setOnClickListener {
             Toast.makeText(
