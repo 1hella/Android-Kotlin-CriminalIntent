@@ -51,10 +51,20 @@ class CrimeListFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 crimeListViewModel.crimes.collect { crimes ->
-                    binding.crimeRecyclerView.adapter = CrimeListAdapter(crimes) { crimeId ->
-                        findNavController().navigate(
-                            CrimeListFragmentDirections.showCrimeDetail(crimeId)
-                        )
+                    if (crimes.isNotEmpty()) {
+                        binding.crimeRecyclerView.visibility = View.VISIBLE
+                        binding.noCrimesLayout.visibility = View.GONE
+                        binding.crimeRecyclerView.adapter = CrimeListAdapter(crimes) { crimeId ->
+                            findNavController().navigate(
+                                CrimeListFragmentDirections.showCrimeDetail(crimeId)
+                            )
+                        }
+                    } else {
+                        binding.crimeRecyclerView.visibility = View.GONE
+                        binding.noCrimesLayout.visibility = View.VISIBLE
+                        binding.addCrimeButton.setOnClickListener {
+                            showNewCrime()
+                        }
                     }
                 }
             }
