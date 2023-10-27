@@ -13,7 +13,6 @@ class CrimeHolder(
     fun bind(crime: Crime, onCrimeClicked: (UUID) -> Unit) {
         binding.crimeTitle.text = crime.title
         binding.crimeDate.text = crime.date.toString()
-
         binding.root.setOnClickListener {
             onCrimeClicked(crime.id)
         }
