@@ -15,12 +15,13 @@ class CrimeRepository private constructor(
     context: Context,
     private val coroutineScope: CoroutineScope = GlobalScope
 ) {
-
     private val database: CrimeDatabase = Room
-        .databaseBuilder(context.applicationContext,
+        .databaseBuilder(
+            context.applicationContext,
             CrimeDatabase::class.java,
             DATABASE_NAME
         )
+        .addMigrations(migration_1_2)
         .build()
 
     fun getCrimes(): Flow<List<Crime>> = database.crimeDao().getCrimes()
