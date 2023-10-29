@@ -7,4 +7,5 @@
     <string name="new_crime">New Crime</string>
     <string name="no_crimes_textview">No crimes reported</string>
     <string name="add_crime_button">Add Crime</string>
+    <string name="menu_delete">Delete</string>
 </resources>
