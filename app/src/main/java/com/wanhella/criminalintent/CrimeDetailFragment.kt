@@ -1,7 +1,10 @@
 package com.wanhella.criminalintent
 
+import android.Manifest
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.pm.ResolveInfo
 import android.net.Uri
 import android.os.Bundle
@@ -9,7 +12,9 @@ import android.provider.ContactsContract
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.setFragmentResultListener
@@ -24,9 +29,11 @@ import kotlinx.coroutines.launch
 import java.text.DateFormat
 import java.util.Date
 
-private const val TAG = "CrimeDetailFragment"
 
-class CrimeDetailFragment: Fragment() {
+private const val TAG = "CrimeDetailFragment"
+private const val READ_CONTACTS_PERMISSION_REQUEST_CODE = 0
+
+class CrimeDetailFragment : Fragment() {
     private var _binding: FragmentCrimeDetailBinding? = null
     private val binding
         get() = checkNotNull(_binding) {
@@ -45,6 +52,8 @@ class CrimeDetailFragment: Fragment() {
         uri?.let { parseContactSelection(it) }
     }
 
+    private var currentId: String? = null
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -58,14 +67,14 @@ class CrimeDetailFragment: Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.apply {
-            crimeTitle.doOnTextChanged {text, _, _, _ ->
+            crimeTitle.doOnTextChanged { text, _, _, _ ->
                 crimeDetailViewModel.updateCrime { oldCrime ->
                     oldCrime.copy(title = text.toString())
                 }
             }
 
 
-            crimeSolved.setOnCheckedChangeListener{ _, isChecked ->
+            crimeSolved.setOnCheckedChangeListener { _, isChecked ->
                 crimeDetailViewModel.updateCrime { oldCrime ->
                     oldCrime.copy(isSolved = isChecked)
                 }
@@ -103,6 +112,35 @@ class CrimeDetailFragment: Fragment() {
         _binding = null
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        when (requestCode) {
+            READ_CONTACTS_PERMISSION_REQUEST_CODE -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PERMISSION_GRANTED) {
+                    val phoneNumber = parsePhoneNumber()
+                    phoneNumber?.let { number ->
+                        crimeDetailViewModel.updateCrime { oldCrime ->
+                            oldCrime.copy(suspectPhone = number)
+                        }
+                    }
+                } else {
+                    Toast.makeText(
+                        context,
+                        getString(R.string.contacts_permission_denied_message),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
+
+            else -> {
+                super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+            }
+        }
+    }
+
     private fun updateUI(crime: Crime) {
         binding.apply {
             if (crimeTitle.text.toString() != crime.title) {
@@ -135,6 +173,21 @@ class CrimeDetailFragment: Fragment() {
             crimeSuspect.text = crime.suspect.ifEmpty {
                 getString(R.string.crime_suspect_text)
             }
+
+            if (crime.suspectPhone.isNotBlank()) {
+                callSuspect.isEnabled = true
+                callSuspect.text = getString(R.string.call_suspect_number, crime.suspectPhone)
+                callSuspect.setOnClickListener {
+                    val intent = Intent(
+                        Intent.ACTION_DIAL,
+                        Uri.parse("tel: " + crime.suspectPhone)
+                    )
+                    startActivity(intent)
+                }
+            } else {
+                callSuspect.isEnabled = false
+                callSuspect.text = getString(R.string.call_suspect_no_number)
+            }
         }
     }
 
@@ -162,19 +215,83 @@ class CrimeDetailFragment: Fragment() {
     }
 
     private fun parseContactSelection(contactUri: Uri) {
-        val queryFields = arrayOf(ContactsContract.Contacts.DISPLAY_NAME)
+        val queryFields = arrayOf(
+            ContactsContract.Contacts.DISPLAY_NAME,
+            ContactsContract.Contacts._ID
+        )
 
         val queryCursor = requireActivity().contentResolver
             .query(contactUri, queryFields, null, null, null)
 
-        queryCursor?.use {cursor ->
+        queryCursor?.use { cursor ->
             if (cursor.moveToFirst()) {
                 val suspect = cursor.getString(0)
+                val idColumnIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID)
+                currentId = cursor.getString(idColumnIndex)
                 crimeDetailViewModel.updateCrime { oldCrime ->
                     oldCrime.copy(suspect = suspect)
                 }
             }
         }
+
+        getContactPhoneNumber()
+    }
+
+    private fun getContactPhoneNumber() {
+        if (ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.READ_CONTACTS
+            ) == PERMISSION_GRANTED
+        ) {
+            val phoneNumber = parsePhoneNumber()
+            phoneNumber?.let { number ->
+                crimeDetailViewModel.updateCrime { oldCrime ->
+                    oldCrime.copy(suspectPhone = number)
+                }
+            }
+        } else {
+            if (shouldShowRequestPermissionRationale(Manifest.permission.READ_CONTACTS)) {
+                val builder: AlertDialog.Builder = AlertDialog.Builder(context)
+                builder.setMessage(getString(R.string.contacts_permission))
+                    .setCancelable(false)
+                    .setPositiveButton("OK") { _, _ ->
+                        requestPermissions(
+                            arrayOf(Manifest.permission.READ_CONTACTS),
+                            READ_CONTACTS_PERMISSION_REQUEST_CODE
+                        )
+                    }
+                builder
+                    .create()
+                    .show()
+            } else {
+                requestPermissions(
+                    arrayOf(Manifest.permission.READ_CONTACTS),
+                    READ_CONTACTS_PERMISSION_REQUEST_CODE
+                )
+            }
+        }
+    }
+
+    private fun parsePhoneNumber(): String? {
+        val phoneQueryCursor = requireActivity().contentResolver
+            .query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                null,
+                ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
+                arrayOf(currentId),
+                null
+            )
+
+        var phone: String? = null
+        phoneQueryCursor?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val phoneColumnIndex =
+                    cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                phone = cursor.getString(phoneColumnIndex)
+            }
+        }
+        currentId = null
+        return phone
     }
 
     private fun canResolveIntent(intent: Intent): Boolean {

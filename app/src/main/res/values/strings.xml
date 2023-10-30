@@ -16,4 +16,8 @@
     <string name="crime_report_suspect">the suspect is %s.</string>
     <string name="crime_report_subject">CriminalIntent Crime Report</string>
     <string name="send_report">Send crime report via</string>
+    <string name="call_suspect_no_number">Call Suspect</string>
+    <string name="call_suspect_number">Call Suspect: %1$s</string>
+    <string name="contacts_permission">CriminalIntent needs your permission to access the suspect\'s phone number</string>
+    <string name="contacts_permission_denied_message">We can\'t retrieve the phone number.</string>
 </resources>
