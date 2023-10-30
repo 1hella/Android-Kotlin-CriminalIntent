@@ -52,8 +52,6 @@ class CrimeDetailFragment : Fragment() {
         uri?.let { parseContactSelection(it) }
     }
 
-    private var currentId: String? = null
-
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -227,7 +225,7 @@ class CrimeDetailFragment : Fragment() {
             if (cursor.moveToFirst()) {
                 val suspect = cursor.getString(0)
                 val idColumnIndex = cursor.getColumnIndex(ContactsContract.Contacts._ID)
-                currentId = cursor.getString(idColumnIndex)
+                crimeDetailViewModel.currentSuspectId = cursor.getString(idColumnIndex)
                 crimeDetailViewModel.updateCrime { oldCrime ->
                     oldCrime.copy(suspect = suspect)
                 }
@@ -278,7 +276,7 @@ class CrimeDetailFragment : Fragment() {
                 ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
                 null,
                 ContactsContract.CommonDataKinds.Phone.CONTACT_ID + " = ?",
-                arrayOf(currentId),
+                arrayOf(crimeDetailViewModel.currentSuspectId),
                 null
             )
 
@@ -290,7 +288,7 @@ class CrimeDetailFragment : Fragment() {
                 phone = cursor.getString(phoneColumnIndex)
             }
         }
-        currentId = null
+        crimeDetailViewModel.currentSuspectId = null
         return phone
     }
 

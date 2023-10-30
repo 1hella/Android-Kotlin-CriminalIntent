@@ -12,6 +12,9 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 class CrimeDetailViewModel(crimeId: UUID) : ViewModel() {
+
+    var currentSuspectId: String? = null
+
     private val crimeRepository = CrimeRepository.get()
 
     private val _crime: MutableStateFlow<Crime?> = MutableStateFlow(null)
